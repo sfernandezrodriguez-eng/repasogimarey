@@ -1,0 +1,587 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHER // Spatial Intelligence & Computational Design</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-void: #030304;
+            --text-optic: #F5F5F7;
+            --text-muted: #86868B;
+            --surface-glass: rgba(14, 14, 18, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-lux: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        html, body {
+            width: 100vw;
+            background-color: var(--bg-void);
+            color: var(--text-optic);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* Sizer para scroll nativo fluido y proporcional de la experiencia */
+        #scroll-container {
+            width: 100%;
+            height: 400vh;
+            pointer-events: none;
+        }
+
+        /* Lienzo WebGL / Canvas 3D Fijo a Pantalla Completa */
+        #lattice-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+        /* HUD Perimetral en las 4 esquinas */
+        .hud-layer {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+            padding: 36px 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            letter-spacing: 0.22em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+        }
+
+        .hud-brand {
+            color: var(--text-optic);
+            font-weight: 500;
+            letter-spacing: 0.28em;
+        }
+
+        /* Barra de progreso vertical a la derecha */
+        .scroll-progress-track {
+            position: fixed;
+            top: 50vh;
+            right: 48px;
+            transform: translateY(-50%);
+            width: 1px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.08);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .scroll-progress-thumb {
+            width: 100%;
+            height: 25%;
+            background: var(--text-optic);
+            transform-origin: top;
+            transition: transform 0.05s linear;
+        }
+
+        /* Capa de Contenido Editorial Flotante */
+        .editorial-layer {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 96px 10vw;
+        }
+
+        .editorial-section {
+            position: absolute;
+            inset: 0;
+            padding: 96px 10vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transform: translate3d(0, 24px, 0);
+            transition: opacity 0.7s var(--ease-lux), transform 0.7s var(--ease-lux);
+            pointer-events: none;
+        }
+
+        .editorial-section.active {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+            pointer-events: auto;
+        }
+
+        .editorial-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .editorial-title {
+            font-family: var(--font-sans);
+            font-size: clamp(3rem, 6.2vw, 6.2rem);
+            font-weight: 400;
+            letter-spacing: -0.045em;
+            line-height: 1.05;
+            color: var(--text-optic);
+            max-width: 920px;
+            margin-bottom: 24px;
+        }
+
+        .editorial-title em {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-weight: 300;
+            color: #E2E2E7;
+        }
+
+        .editorial-desc {
+            font-size: 15.5px;
+            line-height: 1.65;
+            color: var(--text-muted);
+            max-width: 480px;
+            font-weight: 300;
+        }
+
+        /* Lentes de Cristal Óptico (Acto III) */
+        .glass-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 42px;
+            max-width: 1120px;
+        }
+
+        .optic-glass-card {
+            background: var(--surface-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 36px;
+            transition: border-color 0.35s ease, transform 0.35s var(--ease-lux);
+            will-change: transform;
+        }
+
+        .optic-glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.24);
+            transform: translateY(-4px);
+        }
+
+        .card-stat {
+            font-family: var(--font-serif);
+            font-size: 4.2rem;
+            font-style: italic;
+            color: var(--text-optic);
+            line-height: 1;
+            margin-bottom: 14px;
+        }
+
+        .card-label {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.55;
+            font-weight: 300;
+        }
+
+        /* Píldora de Modos Armónicos Inferior */
+        .harmonic-modes-dock {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            gap: 6px;
+            padding: 5px;
+            background: var(--surface-glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-glass);
+            border-radius: 999px;
+            pointer-events: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .mode-pill-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            padding: 9px 18px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .mode-pill-btn:hover {
+            color: var(--text-optic);
+        }
+
+        .mode-pill-btn.active {
+            background: var(--text-optic);
+            color: var(--bg-void);
+            font-weight: 500;
+        }
+
+        /* Acto IV: Cierre Monumental Magnético */
+        .closing-monumental {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+        }
+
+        .monumental-word {
+            font-family: var(--font-sans);
+            font-size: clamp(4rem, 15vw, 16rem);
+            font-weight: 600;
+            letter-spacing: -0.055em;
+            line-height: 0.85;
+            color: var(--text-optic);
+            margin-bottom: 40px;
+            transition: transform 0.25s cubic-bezier(0.1, 1, 0.1, 1);
+            display: inline-block;
+        }
+
+        .magnetic-circle-btn {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            display: grid;
+            place-items: center;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-optic);
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            transition: transform 0.3s var(--ease-lux), background 0.3s ease, color 0.3s ease;
+        }
+
+        .magnetic-circle-btn:hover {
+            background: var(--text-optic);
+            color: var(--bg-void);
+        }
+
+        @media (max-width: 900px) {
+            .glass-cards-grid { grid-template-columns: 1fr; gap: 16px; }
+            .editorial-layer { padding: 80px 24px; }
+            .editorial-section { padding: 80px 24px; }
+            .hud-layer { padding: 24px; }
+            .scroll-progress-track { right: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sizer para scroll nativo fluido -->
+<div id="scroll-container"></div>
+
+<!-- HUD Perimetral -->
+<div class="hud-layer">
+    <div class="hud-row">
+        <span class="hud-brand">AETHER // SPATIAL COMPUTING</span>
+        <span id="hud-act-indicator">01 / 04 — HORIZON</span>
+    </div>
+    <div class="hud-row">
+        <span>HOLD CLICK TO AMPLIFY GRAVITY WELL</span>
+        <span>ZÜRICH // TOKYO</span>
+    </div>
+</div>
+
+<div class="scroll-progress-track">
+    <div class="scroll-progress-thumb" id="scroll-thumb"></div>
+</div>
+
+<!-- Lienzo WebGL / Canvas 3D de 4,800 Nodos -->
+<canvas id="lattice-canvas"></canvas>
+
+<!-- Capa Editorial Flotante (4 Actos fluidos) -->
+<div class="editorial-layer">
+
+    <!-- Acto I -->
+    <div class="editorial-section active" data-act="0">
+        <div class="editorial-eyebrow">Act I // Foundation</div>
+        <h1 class="editorial-title">Spatial intelligence engineered in <em>absolute silence.</em></h1>
+        <p class="editorial-desc">Aether bridges high-performance computational geometry with sensory minimalism, rendering multi-dimensional data as living topography.</p>
+    </div>
+
+    <!-- Acto II -->
+    <div class="editorial-section" data-act="1">
+        <div class="editorial-eyebrow">Act II // Dynamics</div>
+        <h1 class="editorial-title">Gravitational fields in <em>real-time motion.</em></h1>
+        <p class="editorial-desc">Every coordinate point responds instantly to kinetic interaction, transmitting physical wave propagation across 4,800 interconnected nodes.</p>
+    </div>
+
+    <!-- Acto III -->
+    <div class="editorial-section" data-act="2">
+        <div class="editorial-eyebrow">Act III // Precision</div>
+        <h1 class="editorial-title">Optic crystal parameters.</h1>
+        <div class="glass-cards-grid">
+            <div class="optic-glass-card">
+                <div class="card-stat">0.02ms</div>
+                <div class="card-label">Sub-millisecond node re-indexing latency across distributed edge clusters.</div>
+            </div>
+            <div class="optic-glass-card">
+                <div class="card-stat">99.99%</div>
+                <div class="card-label">Deterministic floating-point accuracy in complex matrix transformations.</div>
+            </div>
+            <div class="optic-glass-card">
+                <div class="card-stat">∞</div>
+                <div class="card-label">Continuous procedural topology generation with zero memory leaks.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acto IV -->
+    <div class="editorial-section" data-act="3">
+        <div class="closing-monumental">
+            <h2 class="monumental-word" id="monumental-footer-word">AETHER</h2>
+            <div class="magnetic-circle-btn" id="footer-magnetic-btn">Initialize</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Píldora de Modos Armónicos -->
+<div class="harmonic-modes-dock">
+    <button class="mode-pill-btn active" data-mode="wave">Wave Lattice</button>
+    <button class="mode-pill-btn" data-mode="vortex">Kinetic Vortex</button>
+    <button class="mode-pill-btn" data-mode="quantum">Quantum Ripple</button>
+</div>
+
+<script>
+    /**
+     * ============================================================================
+     * AETHER // SPATIAL INTELLIGENCE COMPUTATIONAL ENGINE (120 FPS)
+     * ============================================================================
+     */
+
+    const lerp = (a, b, t) => (1 - t) * a + t * b;
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    const STATE = {
+        scrollProgress: 0,
+        smoothProgress: 0,
+        time: 0,
+        mode: 'wave',
+        isMouseDown: false,
+        mouse: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 },
+        activeAct: 0
+    };
+
+    const canvas = document.getElementById('lattice-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const COLS = 80;
+    const ROWS = 60;
+    const TOTAL_NODES = COLS * ROWS;
+
+    const nodes = {
+        u: new Float32Array(TOTAL_NODES),
+        v: new Float32Array(TOTAL_NODES),
+        baseX: new Float32Array(TOTAL_NODES),
+        baseY: new Float32Array(TOTAL_NODES),
+        baseZ: new Float32Array(TOTAL_NODES),
+        h: new Float32Array(TOTAL_NODES),
+        vh: new Float32Array(TOTAL_NODES),
+        energy: new Float32Array(TOTAL_NODES),
+        vis: new Uint8Array(TOTAL_NODES),
+        sx: new Float32Array(TOTAL_NODES),
+        sy: new Float32Array(TOTAL_NODES),
+        scale: new Float32Array(TOTAL_NODES)
+    };
+
+    function initLattice() {
+        let idx = 0;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                nodes.u[idx] = (c / (COLS - 1)) - 0.5;
+                nodes.v[idx] = (r / (ROWS - 1)) - 0.5;
+                nodes.baseX[idx] = nodes.u[idx] * 2400;
+                nodes.baseY[idx] = nodes.v[idx] * 1800;
+                nodes.baseZ[idx] = 0;
+                idx++;
+            }
+        }
+    }
+    initLattice();
+
+    window.addEventListener('mousemove', (e) => {
+        STATE.mouse.x = e.clientX;
+        STATE.mouse.y = e.clientY;
+    });
+
+    window.addEventListener('mousedown', () => { STATE.isMouseDown = true; });
+    window.addEventListener('mouseup', () => { STATE.isMouseDown = false; });
+
+    window.addEventListener('scroll', () => {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        STATE.scrollProgress = maxScroll > 0 ? clamp(window.scrollY / maxScroll, 0, 1) : 0;
+    }, { passive: true });
+
+    document.querySelectorAll('.mode-pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            STATE.mode = btn.getAttribute('data-mode');
+        });
+    });
+
+    function renderLatticeLoop(now) {
+        STATE.time += 0.016;
+        STATE.smoothProgress = lerp(STATE.smoothProgress, STATE.scrollProgress, 0.07);
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        ctx.clearRect(0, 0, width, height);
+
+        document.getElementById('scroll-thumb').style.transform = `scaleY(${0.25 + STATE.smoothProgress * 0.75}) translate3d(0, ${STATE.smoothProgress * 300}%, 0)`;
+
+        const newAct = clamp(Math.floor(STATE.smoothProgress * 3.99), 0, 3);
+        if (newAct !== STATE.activeAct) {
+            STATE.activeAct = newAct;
+            document.getElementById('hud-act-indicator').textContent = `0${newAct + 1} / 04 — ${['HORIZON', 'DYNAMICS', 'PRECISION', 'MONOLITH'][newAct]}`;
+            document.querySelectorAll('.editorial-section').forEach((sec, idx) => {
+                sec.classList.toggle('active', idx === newAct);
+            });
+        }
+
+        const sp = STATE.smoothProgress;
+        const fov = 850;
+        const camPitch = lerp(0.52, 0.15, sp);
+        const camZ = lerp(950, 1250, sp);
+        const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
+        const t = STATE.time;
+
+        const localMx = STATE.mouse.x;
+        const localMy = STATE.mouse.y;
+        const gravityMultiplier = STATE.isMouseDown ? 2.2 : 1.0;
+
+        // Ecuación de onda acoplada con amortiguación sedosa
+        const tension = 0.12;
+        const spring = 0.012;
+        const damping = 0.965;
+
+        for (let r = 1; r < ROWS - 1; r++) {
+            const rowOff = r * COLS;
+            for (let c = 1; c < COLS - 1; c++) {
+                const i = rowOff + c;
+                const laplacian = (nodes.h[i - 1] + nodes.h[i + 1] + nodes.h[i - COLS] + nodes.h[i + COLS]) * 0.25 - nodes.h[i];
+                nodes.vh[i] = (nodes.vh[i] + laplacian * tension - nodes.h[i] * spring) * damping;
+            }
+        }
+
+        for (let i = 0; i < TOTAL_NODES; i++) {
+            nodes.h[i] += nodes.vh[i];
+
+            let ox = nodes.baseX[i];
+            let oy = nodes.baseY[i];
+            let oz = nodes.baseZ[i];
+
+            if (sp > 0.3 && sp <= 0.7) {
+                const angle = nodes.u[i] * Math.PI * 2;
+                const rRing = 550 + nodes.v[i] * 350;
+                const targetX = Math.cos(angle) * rRing;
+                const targetY = nodes.u[i] * 800;
+                const targetZ = Math.sin(angle) * rRing - 300;
+                ox = lerp(ox, targetX, (sp - 0.3) * 2.5);
+                oz = lerp(oz, targetZ, (sp - 0.3) * 2.5);
+            } else if (sp > 0.7) {
+                const waveHarmonic = Math.sin(nodes.u[i] * 8 + t) * 120;
+                oy += waveHarmonic;
+            }
+
+            const ambientWave = Math.sin(nodes.u[i] * 4 + t * 0.8) * Math.cos(nodes.v[i] * 4 - t * 0.6) * 35;
+            const wy = ambientWave + nodes.h[i];
+
+            const ry = oy * cosP - (oz + wy) * sinP;
+            const rz = oy * sinP + (oz + wy) * cosP + camZ;
+
+            if (rz > 60) {
+                const scale = fov / rz;
+                const sx = width * 0.5 + ox * scale;
+                const sy = height * 0.52 + ry * scale;
+
+                // Interacción de cursor refinada sin picos bruscos
+                const dx = sx - localMx;
+                const dy = sy - localMy;
+                const dSq = dx * dx + dy * dy;
+                const radius = 190;
+
+                if (dSq < radius * radius && dSq > 1) {
+                    const dist = Math.sqrt(dSq);
+                    const force = Math.pow(1 - dist / radius, 2) * gravityMultiplier;
+
+                    if (STATE.mode === 'wave') {
+                        nodes.vh[i] += force * 0.9;
+                    } else if (STATE.mode === 'vortex') {
+                        const angle = Math.atan2(dy, dx);
+                        nodes.vh[i] += force * 0.8;
+                        nodes.baseX[i] += Math.cos(angle + Math.PI * 0.5) * force * 1.8;
+                    } else if (STATE.mode === 'quantum') {
+                        if (Math.random() < 0.12) nodes.vh[i] += force * 1.8;
+                    }
+                }
+
+                nodes.sx[i] = sx;
+                nodes.sy[i] = sy;
+                nodes.scale[i] = scale;
+                nodes.energy[i] = clamp((Math.abs(nodes.h[i]) + Math.abs(nodes.vh[i]) * 4) / 45, 0, 1);
+                nodes.vis[i] = (sx > -40 && sx < width + 40 && sy > -40 && sy < height + 40) ? 1 : 0;
+            } else {
+                nodes.vis[i] = 0;
+            }
+        }
+    }
