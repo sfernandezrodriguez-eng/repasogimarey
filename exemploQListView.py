@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ModeloTarefas import ModeloTarefas
+from modelotarefa2 import ModeloTarefas
 
 
 class JanelaTarefas(QMainWindow):
@@ -22,10 +22,10 @@ class JanelaTarefas(QMainWindow):
 
         self.modelo = ModeloTarefas(
             [
-                "Ir o centro DC",
-                "Ir o ximnasio",
-                "Ir a compra",
-                "Outra",
+                (True, "Ir o centro DC"),
+                (False, "Ir o ximnasio"),
+                (False, "Ir a compra"),
+                (False, "Outra"),
             ],
             self,
         )
